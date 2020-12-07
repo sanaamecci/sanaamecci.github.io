@@ -1,0 +1,168 @@
+---
+title: 'Project 1: Exploratory Data Analysis'
+author: "Sanaa Mecci (sfm682) SDS348" 
+date: '10/18/20'
+output:
+  html_document:
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+  pdf_document:
+    toc: no
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE, fig.align = "center", warning = F, message = F,
+tidy=TRUE, tidy.opts=list(width.cutoff=60), R.options=list(max.print=100))
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+I have chosen two datasets from R packages accessed through tidytuesday 
+via GitHub regarding college tuition, diversity, and pay (tuition income) 
+and US spending on kids (kids). My aim was to analyze wether or not the 
+yearly amount of public spending on kids and public spending per child, 
+both adjusted for inflation, is inversely related to the yearly total 
+cost of college attendance and the net cost paid by students after 
+scholarships and awards. Before condensing the datasets, the kids dataset 
+contained 3 categorical and 3 numerical variables. The kids dataset contains 
+an account of public spending on children from 1997 through 2016 to analyze 
+state-testate spending on education, income security health, etc. The college 
+tuition data originally came from the US Department of Education from 2010 to 2016. 
+The tuition income dataset contained 5 categorical and 2 numerical variables. These 
+datasets in particular are interesting to me because I’ve always been hyperaware 
+both of how expensive tuition is for college students such as myself and how 
+little funding public schools received and was wondering if both, since 
+they receive public/government funding, are correlated. I am anticipating
+that as the yearly amount of public spending on kids increases, the cost of 
+tuition will decrease because the government will funnel more money into college 
+education.
+
+```{r cars}
+
+library(dplyr)
+library(tidyverse)
+library(tidyr)
+library(corrplot)
+library(cluster)
+
+tuition_income <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-03-10/tuition_income.csv') 
+kids <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-15/kids.csv')
+
+drop <- c("state", "variable", "raw")
+kids1=kids[,!(names(kids)%in%drop)]
+
+drop1 <- c("name", "state", "campus")
+tuition1=tuition_income[,!(names(tuition_income)%in%drop1)]
+
+
+kids2<- kids1 %>% filter(year %in% (2010:2016))
+tuition2 <- tuition1 %>% filter(year %in% (2010:2016))
+
+set.seed(1000)
+
+cost <- full_join(kids2%>% sample_frac(.12184), tuition2%>% sample_frac(.006462), by="year")
+view(cost)
+
+```
+First, from the kids dataset I dropped the cases “state”, “variable, and 
+“raw” and the variables “name”, “state”, and “campus” to minimize the combined 
+data set to 6 variables in total: 2 categorical and 4 numerical. I then proceeded 
+to filter both datasets to condense the data to between the years of 2010 and 2016 
+since that is all that was reported on by the tuition income dataset. Before 
+combining the datasets, since my dataset was very large and thus unable to work 
+with, I set the seed and used sample frac to get a random sample of 1000 rows 
+before performing a full join on my two datasets by the common categorical variable 
+year to return all of the data into a singular dataset named cost.
+```{r}
+summary(cost)
+
+cost2<-cost%>%group_by(year)%>%dplyr::summarize(inf_adj, inf_adj_perchild, total_price, net_cost, income_lvl, meaninf=mean(inf_adj),
+meanper=mean(inf_adj_perchild), meantotal=mean(total_price), meannet=mean(net_cost)) 
+
+cost2%>%arrange(desc(inf_adj))%>%filter(year=="2016")%>%dplyr::summarize(meantotal=mean(total_price),
+                                                                        meannet=mean(net_cost))
+
+cost%>%filter(year=="2014")%>%dplyr::summarize(meantotal=mean(total_price), meannet=mean(net_cost))
+```
+In order to explore and manipulate my dataset, I used six different dplyr functions and 
+ran various summary statistics. I began by first grouping my dataset by year and proceeded 
+by summarizing the mean values for government spending adjusted for inflation, the adjusted 
+inflation value per child, the total cost of tuition, and the net cost of tuition. While it 
+looked like there was a general increase in the variables mean inflation, mean total, and 
+mean total, the data was still too scattered to conclude a solid correlation between the 
+variables. To continue in testing this relationship, I narrowed in on the year where the 
+mean inflation was the highest, 2016, and the lowest, 2014, and compared both years against 
+the mean total and mean net values. I found that for the year with higher inflation, 2016, 
+the mean total and mean net was also higher (mean total of 31,547 and mean net of 17,003) 
+compared to 2014.
+
+## Including Plots
+```{r}
+cost%>%dplyr::select(inf_adj, inf_adj_perchild, total_price, net_cost)%>% cor()
+cost%>%group_by(year)%>%dplyr::select(inf_adj, inf_adj_perchild, total_price, net_cost)%>%summarize_all(sd)
+
+cost2 <- cost %>% dplyr::mutate(meaninf=mean(inf_adj), meanper=mean(inf_adj_perchild),
+                                meantotal=mean(total_price), meannet=mean(net_cost), difference = total_price - net_cost)
+```
+I then proceeded by performing a correlation test between the inflated value, the inflated
+value per child, the total price, and net cost. I found that the variables that came from
+either dataset, tuition or kids, before they were combined had a slight correlatation but 
+when compared against each other, the variables with the value for the adjusted inflation 
+and the total price had a a very weak correlation of 0.001889 and -0.004152 for the total
+price compared against the adjusted inflation value per child. I then grouped the values
+from both datasets by year and created summary statistics by grouping the numerical
+variables by the categorical variable year. Then, I mutated my orinal dataset cost to
+add a new column difference to see if it is increasing with every year which would support
+my initial hypothesis that the government is increasing financial aid towards educational 
+programs (towards scholarships) with every increasing year along with public spending.
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+cors<-cost%>%select_if(is.numeric)%>%cor()
+cors%>%as.data.frame%>%
+  rownames_to_column%>%pivot_longer(-1)%>%na.omit%>% 
+  ggplot(aes(rowname,name,fill=value))+geom_tile()+ geom_text(aes(label=round(value,2)))+ 
+  xlab("")+ylab("")+coord_fixed()+ scale_fill_gradient2(low="red",mid="white", high="blue")
+
+```
+Creating a correlation heatmap of my numeric variables, there was a slight correlation of 
+0.11 and 0.03 of both the total price and the net cost of tuition variables from the tuition
+dataset against the year. However, I am able to conclude that there is no correlation between 
+the variables between two datasets tuition income and kids as most of the values were 0 or 
+negatively correlated.
+
+```{r}
+ggplot(cost, aes(year))+ geom_bar(aes(y=total_price, fill=income_lvl), stat="summary")+
+  theme(legend.position = "none")+ggtitle("Total Cost of Tuition per Year")+ylab("Total Cost in USD")+xlab("Year")
+
+ggplot(data = cost, aes(x = year, y = inf_adj)) + geom_point(size=.1, aes(color = income_lvl)) +ggtitle("Public Spending per Year")+ylab("Public Spending on Kids")+xlab("Year")
+
+
+p=cost %>%dplyr::select_if(is.numeric) %>% scale
+rownames(p)<-cost$year
+money<-princomp(p)
+summary(money, loadings=T)
+eigval<-money$sdev^2
+round(cumsum(eigval)/sum(eigval),2)
+eigval
+eigen(cor(p))
+ggplot()+geom_point(aes(money$scores[,1], money$scores[,2]))+xlab("PC1")+ylab("PC2")
+```
+I created a bargraph to compare the total cost of tuition per year in USD and found that
+there was a gradual increase in the tuition cost per year and that the income levels also
+were slightly correlated to tuition costs. I proceeded by creating a pointgraph to compare 
+the public spending on kids per year. The public spending looks like it remained more or less
+consistent and so I found that the results were not adequate enough to conclude a correlation
+between public spending on kids and year. Furthermore, I found that since the points were 
+overlapping and incomprehensible, the income level is not really a factor in public spending
+towards kids. By running PCA on my numeric variables I was able to conclude that there is no
+correlation between my variables since the points are so oddly clustered and structured and 
+since most values were negative.
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

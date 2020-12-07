@@ -1,0 +1,236 @@
+---
+title: 'Project 2: Modeling, Testing, and Predicting'
+author: "Sanaa Mecci (sfm682) SDS348"
+date: '11/25/20'
+output:
+  html_document:
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+hook_output = knit_hooks$get('output')
+knit_hooks$set(output = function(x, options) {
+  # this hook is used only when the linewidth option is not NULL
+  if (!is.null(n <- options$linewidth)) {
+    x = knitr:::split_lines(x)
+    # any lines wider than n should be wrapped
+    if (any(nchar(x) > n)) x = strwrap(x, width = n)
+    x = paste(x, collapse = '\n')
+  }
+  hook_output(x, options)
+})
+
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE,fig.align="center",warning=FALSE,message=FALSE,fig.width=8, fig.height=5, linewidth=60)
+options(tibble.width = 100,width = 100)
+library(tidyverse)
+```
+
+- **0. Introduction
+```{r}
+library(dplyr)
+library(tidyverse)
+library(tidyr)
+library(corrplot)
+library(cluster)
+drop <- c("score", "fcollege", "mcollege", "home", "unemp","region")
+CollegeDistance = read.csv("filename.csv")
+CDistance=CollegeDistance[,!(names(CollegeDistance)%in%drop)]
+```
+I have chosen a dataset which included cross-section data conducted by the Department of Education in 1980 regarding the distance of college and included high school students from 1,100 different high schools. The variables I will be analyzing are the distance (distance from a 4-year college), tuition (average state 4-year college tuition) and wage (the state hourly wage in manufacturing in 1980). Specifically, my aim was to analyze how those variables would relate to response variables such as ethnicity (African American, Hispanic, or other) and gender (m/f). Lastly, my two binary variables are income(which is scaled by high/low) and urban, if the school is in an urban area(which is scaled by yes/no). There are 4739 observations in total across 9 variables in the condensed dataset. 
+
+- **1. MANOVA
+```{r}
+man1<-manova(cbind(tuition,distance)~ethnicity, data=CDistance) 
+summary(man1)
+summary.aov(man1)
+pairwise.t.test(CDistance$tuition,CDistance$ethnicity,p.adj="none")
+pairwise.t.test(CDistance$distance,CDistance$ethnicity,p.adj="none")
+0.05/4 #bonferroni
+1-.95^4 #type I error
+library(rstatix)
+group <- CDistance$ethnicity
+DVs <- CDistance %>% dplyr::select(tuition, distance)
+sapply(split(DVs,group), mshapiro_test)
+```
+In total, there was 1 MANOVA test, 1 ANOVA test, and 2 pairwise t-tests, 4 in total, which leaves the probability that there would be, if left unadjusted, one type I error, 0.185. Using the Bonferroni correction, the significance level was adjusted to 0.0125. When analyzing ethnicity, we can see that the variables tuition and cost significantly differ. To test the MANOVA assumptions, the multivariate normality was tested for both groups but yielded a p value across both variables that was less than .05 so we can deduce that the multivariate normality assumption was violated so we did not have to test for the homogeneity. We can reject the null hypothesis that all of the MANOVA assumptions were met.
+
+- **2. Randomization test
+```{r}
+CDistance%>%dplyr::group_by(urban)%>%
+dplyr:: summarize(means=mean(distance))%>%dplyr::summarize("mean_diff:"=diff(means))
+
+ rand_dist<-vector()
+for(i in 1:5000){ rando<-data.frame(distance=sample(CDistance$distance),urban=CDistance$urban)
+rand_dist[i]<-mean(rando[rando$urban=="yes",]$distance)- mean(rando[rando$urban=="no",]$distance)}
+ mean(rand_dist>-1.5712)*2
+ 
+{hist(rand_dist,main="",ylab=""); abline(v = c(-1.5712, 1.5712),col="red")}
+t.test(data=CDistance, distance~urban)
+
+```
+The null hypothesis is that the mean distance is the same for high school students who’s school is in an urban area versus high school students who’s school is not an urban area. The alternate hypothesis is that the mean distance is different for students who’s high school is in an urban area versus a non-urban area. Once performing the randomization test, a small p-value of <2.2e-16 was yielded, allowing us to reject the null hypothesis. Thus, as we can see in the plot, there is a difference in the mean distance for students whose school is located in an urban area versus not in an urban area.
+
+- **3. Linear Regression model
+```{r}
+library(sandwich)
+library(lmtest)
+library(ggplot2)
+CDistance$tuition_c <- CDistance$tuition - mean(CDistance$tuition)
+CDistance$distance_c <- CDistance$distance - mean(CDistance$distance)
+CDistance$wage_c <- CDistance$wage - mean(CDistance$wage)
+umfit<-lm(tuition_c~urban*distance_c, data=CDistance)
+coeftest(umfit)
+
+ggplot(CDistance, aes(tuition_c, distance_c)) + geom_point() + geom_smooth(method="lm")
+
+plot(CDistance$tuition_c, CDistance$distance_c)
+bptest(umfit)
+
+resids<-umfit$resid
+fitteds<-umfit$fitted.values
+ks.test(resids, "pnorm", mean=0, sd(resids))
+
+coeftest(umfit, vcov = vcovHC(umfit))
+summary(umfit)$r.sq
+```
+All of the numeric variables involved in the interaction are mean-centered. Analyzing the intercept coefficient, we can see that for the students whose schools are located in an urban area, tend to be located to colleges that are further away from them. When looking at the assumptions of normality (fail to reject null) homoskedasticity (p-value less than 0.05), and linearity (graph is not linear, points are scattered everywhere), we can see from the diagrams that the assumptions were only met for normality and not for the other two tested. The regression results with robust standard errors showed a change in both standard errors and t values but no change in the coefficient estimates. The proportion of variance explained by the linear regression model is 0.01315.
+
+- **4. Rerun same Regression model
+```{r}
+set.seed(326)
+boot_dat<- sample_frac(CDistance, replace=T)
+samp_distn<-replicate(5000, {
+boot_dat <- sample_frac(CDistance, replace=T)
+fiit <- lm(tuition_c~urban*distance_c, data=boot_dat) 
+coef(fiit) 
+})
+samp_distn %>% t %>% as.data.frame %>%summarize_all(sd)
+```
+Once again, all of the numeric variables involved in the interaction are mean-centered. For the intercept SE and distance SEs, the bootstrapped values decreased slightly from the robust and original SEs. For the urban SE, the value slightly increased. 
+
+- **5. (25 pts)** Logistic Regression model
+
+```{r}
+library(ggplot2)
+library(MASS)
+
+cdd<-CDistance%>%dplyr::mutate(income=ifelse(income=="low",0,1)) 
+#CDistance=CDistance %>% dplyr::mutate(income = ifelse(income == "low",0,1))
+
+cdd$distance_c= cdd$distance-mean(cdd$distance)
+cdd$wage_c= cdd$wage-mean(cdd$wage)
+
+fitt<-glm(as.factor(income) ~ distance_c + wage_c, data=cdd,family="binomial") 
+summary(fitt)
+coeftest(fitt)
+
+prob<-predict(fitt,type="response")
+predict<-ifelse(prob>.5,1,0)
+table(prediction=predict,truth=CDistance$income)%>%addmargins
+
+(3374/4739) #acc
+(1365/1365) #tpr/sens
+(3374/3374) #tnr/spec
+(1365/4739) #ppv
+
+library(plotROC)
+library(ggplot2)
+plotROC <- ggplot(CDistance) + geom_roc(aes(d=income, m=prob), n.cuts=0) + geom_segment(aes(x=0, xend=1, y=0, yend=1),lty=2)
+plotROC
+calc_auc(plotROC)
+
+cdd$logit<-predict(fitt)
+cdd$income<-factor(CDistance$income,levels=c("high","low"))
+head(cdd)
+ggplot(cdd,aes(logit,fill=income))+geom_density(alpha=.3)+geom_vline(xintercept=0,lty=2)
+```
+
+When the students family’s income is high and corresponds to the variables distance and wage, the intercept coefficient shows us that the binary variable income is predicted to be -0.9199. When we hold the variable wage constant, with every 1 unit increase in the variable distance, results in a -.09084 decrease in distance. On the other hand, there’s a 0.1192 increase in the binary variable income with every 1 unit increase in distance, keeping wage constant. The accuracy of the logistic model is 0.711 (proportion of low income over total). The sensitivity(tpr/proportion of students whose family income is high reported correctly) and specification(tnr/ proportion of students whose family income is high reported incorrectly) values are both 1 which stands for the true positive and true negative rate respectively. The ppv was calculated to be 0.288. The AUC was calculated to be 0.433, which is bad. The low AUC value tells us that it is hard to predict if a student’s familial income would be high or low based off of how far a college is located from them, and the state hourly wage in manufacturing.
+
+- **6. (25 pts)** Logistic regression of all variables
+```{r}
+
+library(tidyverse); library(lmtest)
+
+class_diag<-function(probs,truth){
+  tab<-table(factor(probs>.5,levels=c("FALSE","TRUE")),truth)
+  acc=sum(diag(tab))/sum(tab)
+  sens=tab[2,2]/colSums(tab)[2]
+  spec=tab[1,1]/colSums(tab)[1]
+  ppv=tab[2,2]/rowSums(tab)[2]
+  f1=2*(sens*ppv)/(sens+ppv)
+
+  if(is.numeric(truth)==FALSE & is.logical(truth)==FALSE){
+    truth<-as.numeric(truth)-1}
+  
+  #CALCULATE EXACT AUC
+  ord<-order(probs, decreasing=TRUE)
+  probs <- probs[ord]; truth <- truth[ord]
+  
+  TPR=cumsum(truth)/max(1,sum(truth)) 
+  FPR=cumsum(!truth)/max(1,sum(!truth))
+  
+  dup<-c(probs[-1]>=probs[-length(probs)], FALSE)
+  TPR<-c(0,TPR[!dup],1); FPR<-c(0,FPR[!dup],1)
+  
+  n <- length(TPR)
+  auc<- sum( ((TPR[-1]+TPR[-n])/2) * (FPR[-1]-FPR[-n]) )
+
+  data.frame(acc,sens,spec,ppv,f1,auc)
+}
+
+yep <- cdd %>% dplyr::select(-gender, -ethnicity, -urban, -wage, -distance, -tuition, -education)
+
+fitl<-glm(income~.,data=yep,family="binomial")
+coeftest(fitl)
+
+probab <- predict(fitl, data="response")
+class_diag(probab,yep$income)
+
+set.seed(1234)#10fold
+k=10
+date<-yep[sample(nrow(yep)),]
+folds<-cut(seq(1:nrow(yep)),breaks=k,labels=F) 
+diags<-NULL
+for(i in 1:k){
+college<-date[folds!=i,] 
+test<-date[folds==i,]
+truth<-test$income
+
+fitl<-glm(income~distance_c+tuition_c,data=yep,family="binomial")
+probs<-predict(fitl,newdata = test,type="response")
+diags<-rbind(diags,class_diag(probs,truth)) 
+}
+
+diags%>%summarize_all(mean)
+
+library(glmnet) #lasso
+matrix <- as.matrix(yep$income)
+cddlast <- model.matrix(income ~ ., data=yep)[,-1]
+head(cddlast)
+
+cv<- cv.glmnet(cddlast, matrix, family="binomial")
+lasso_fit <- glmnet(cddlast, matrix, family="binomial", lambda = cv$lambda.1se)
+coef(lasso_fit)
+
+set.seed(1234) #cvlasso
+k=10
+data<-yep[sample(nrow(yep)),]
+folds<-cut(seq(1:nrow(yep)),breaks=k,labels=F) 
+diags<-NULL
+
+for(i in 1:k){
+train<-data[folds!=i,]
+test<-data[folds==i,]
+truth<-test$income
+fit<-glm(income~tuition_c+wage_c+distance_c, data=yep, family = "binomial")
+probs<-predict(fit,newdata = test,type="response")
+diags<-rbind(diags,class_diag(probs,truth))
+}
+summarize_all(diags, mean)
+```
+The in-sample values calculated for accuracy, TPR(sensitivity), TNR(specificity), PPV(precision) and AUC are respectively: 0.7012, 0.9596, 0.0622, 0.7166, and 0.8205. The AUC is a very good value. For the 10-fold CV, the out-sample values calculated for accuracy, TPR, TNR, PPV, and AUC are respectively: 0.7119, 1, 0, 0.7119, 0.8316, 0.5574. The AUC in this case was bad and decreased compared to the in-sample classification. After running the LASSO regression having input all the variables as predictors, the variables to be retained were the most crucial predictors of income and should’ve had values next to them. None of the variables had any value next to them which tells us that no variable was a good predictor in familial income. A 10-fold CV was then performed on all of the variables regardless and yielded accuracy, TPR, TNR, PPV, and AUC values of: 0.7119, 1, 0, 0.7119, 0.8316, and 0.5696. The accuracy remained the same from the previous logistic test with only a slight increase in AUC, which was still a very poor value. 
