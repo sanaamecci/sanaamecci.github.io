@@ -1,9 +1,18 @@
 ---
-title: Hello!
+title: R & Python together!
 author: ''
 date: '2020-12-06'
 slug: hello
 categories: []
 tags: []
-description: 'Welcome one and all! Here are some coding projects I have completed recently to get to know me better![Link to project 1](/project/project1/) [Link to google](https://www.google.com)'
+description: ''
 ---
+
+So why would you ever need to use both Python AND R? Well, they are both widely used languages which have a large array of tools with different functions. R is a programming language for statistical computing and software whereas Python is a more general-purpose coding language which can be used for a wide variety programming and development. Now, you still might be unfamiliar with Python and wondering what kind of things we can do using the language --- look no further, here is an example!
+
+#```{python}
+#import pandas as pd
+#poke <- pd.read_csv("http://www.nathanielwoodward.com/Pokemon.csv")
+#poke.head()
+#poke.iloc[:, :5]
+#```
