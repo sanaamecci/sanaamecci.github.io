@@ -72,7 +72,7 @@
               
 
 
-<p>So why would you ever need to use both Python AND R? Well, they are both widely used languages which have a large array of tools with different functions. R is a programming language for statistical computing and software whereas Python is a more general-purpose coding language which can be used for a wide variety programming and development. Now, you still might be unfamiliar with Python and wondering what kind of things we can do using the language --- look no further, here is an example!</p>
+<p>So why would you ever need to use both Python AND R? Well, they are both widely used languages which contain a large array of tools with different functions. R is a programming language for statistical computing and software whereas Python is a more general-purpose coding language that can be used for a wide variety of programming languages and development. Now, you still might be unfamiliar with Python and wondering what kind of things we can do using the language --- look no further, here is an example!</p>
 <pre class="python"><code>import pandas as pd
 poke = pd.read_csv(&quot;http://www.nathanielwoodward.com/Pokemon.csv&quot;)
 poke.head()</code></pre>
@@ -217,14 +217,14 @@ poke.head()</code></pre>
 ## 799      120      130       90     70           6       True  
 ## 
 ## [800 rows x 13 columns]</code></pre>
-<p>By looking at the Poke dataset in Python as a pandas dataframe, we can see that there are 800 observations of 13 different variables.</p>
+<p>Pandas in Python is a a fast and powerful data analysis and manipulation tool. By looking at the Poke dataset in Python as a pandas dataframe, we can see that there are 800 observations of 13 different variables.</p>
 <p>Moving on --- as seen below, the reticulate package in R allows you to run Python code in an R session. Both R and Python when used together can really streamline any programming project.</p>
 <pre class="r"><code>library(reticulate)
 super&lt;-&quot;This is how you use&quot;</code></pre>
 <pre class="python"><code>easy=&quot;Python and R together&quot;
 print(r.super, easy)</code></pre>
 <pre><code>## This is how you use Python and R together</code></pre>
-<p>Now you know why integrating Python into R can be beneficial to you in all of your coding endeavors! Enjoy the meme below, thanks for reading! :)</p>
+<p>We just used Python in R to print a sentence and that's just the tip of the iceberg in terms of what you can do when combining the two languages. Now you know why integrating Python into R can be beneficial to you in all of your coding endeavors! Enjoy the meme below and thanks for reading! :)</p>
 <div class="figure">
 <img src="../../../../../post/2020-12-06-hello_files/IMG_2695.jpeg" />
 

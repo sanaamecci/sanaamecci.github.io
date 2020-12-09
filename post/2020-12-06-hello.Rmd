@@ -8,7 +8,7 @@ tags: []
 description: ''
 ---
 
-So why would you ever need to use both Python AND R? Well, they are both widely used languages which have a large array of tools with different functions. R is a programming language for statistical computing and software whereas Python is a more general-purpose coding language which can be used for a wide variety programming and development. Now, you still might be unfamiliar with Python and wondering what kind of things we can do using the language --- look no further, here is an example!
+So why would you ever need to use both Python AND R? Well, they are both widely used languages which contain a large array of tools with different functions. R is a programming language for statistical computing and software whereas Python is a more general-purpose coding language that can be used for a wide variety of programming languages and development. Now, you still might be unfamiliar with Python and wondering what kind of things we can do using the language --- look no further, here is an example!
 
 ```{python}
 import pandas as pd
@@ -17,7 +17,7 @@ poke.head()
 poke.iloc[:, :]
 ```
 
-By looking at the Poke dataset in Python as a pandas dataframe, we can see that there are 800 observations of 13 different variables.
+Pandas in Python is a a fast and powerful data analysis and manipulation tool. By looking at the Poke dataset in Python as a pandas dataframe, we can see that there are 800 observations of 13 different variables.
 
 Moving on --- as seen below, the reticulate package in R allows you to run Python code in an R session. Both R and Python when used together can really streamline any programming project.
 
@@ -31,6 +31,6 @@ easy="Python and R together"
 print(r.super, easy)
 ```
 
-Now you know why integrating Python into R can be beneficial to you in all of your coding endeavors! Enjoy the meme below, thanks for reading! :)
+We just used Python in R to print a sentence and that's just the tip of the iceberg in terms of what you can do when combining the two languages. Now you know why integrating Python into R can be beneficial to you in all of your coding endeavors! Enjoy the meme below and thanks for reading! :)
 
 ![](/post/2020-12-06-hello_files/IMG_2695.jpeg)
